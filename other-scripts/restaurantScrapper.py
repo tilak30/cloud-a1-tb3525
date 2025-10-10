@@ -11,16 +11,16 @@ HEADERS = {"Authorization": f"Bearer {API_KEY}"}
 # Cuisines & More Manhattan Neighborhoods
 cuisines = ["Thai", "Mexican", "Chinese", "Italian", "Indian"]
 neighborhoods = [
-    "Upper East Side, Manhattan, NY",
-    "Upper West Side, Manhattan, NY",
-    "Harlem, Manhattan, NY",
-    "Midtown, Manhattan, NY",
-    "Lower Manhattan, Manhattan, NY",
-    "Chelsea, Manhattan, NY",
     "Financial District, Manhattan, NY",
     "East Village, Manhattan, NY",
     "SoHo, Manhattan, NY",
-    "Tribeca, Manhattan, NY"
+    "Tribeca, Manhattan, NY",
+    "Upper West Side, Manhattan, NY",
+    "Harlem, Manhattan, NY",
+    "Chelsea, Manhattan, NY",
+    "Upper East Side, Manhattan, NY",
+    "Midtown, Manhattan, NY",
+    "Lower Manhattan, Manhattan, NY"
 ]
 
 def fetch_restaurants(cuisine, total=250):

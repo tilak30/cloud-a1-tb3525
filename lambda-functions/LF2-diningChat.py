@@ -34,29 +34,6 @@ AUTH_HEADER = base64.b64encode(f"{OS_USERNAME}:{OS_PASSWORD}".encode()).decode()
 
 
 # ================== Helper Functions ==================
-def receive_sqs_message():
-    """Fetch a single message from SQS"""
-    response = sqs.receive_message(
-        QueueUrl=SQS_QUEUE_URL,
-        MaxNumberOfMessages=1,
-        WaitTimeSeconds=5
-    )
-
-    messages = response.get("Messages", [])
-    if not messages:
-        return None, None
-
-    message = messages[0]
-    receipt_handle = message["ReceiptHandle"]
-
-    try:
-        body = json.loads(message["Body"])
-    except json.JSONDecodeError:
-        print("Failed to parse SQS message:", message["Body"])
-        return None, None
-
-    return body, receipt_handle
-
 
 def query_restaurants_from_opensearch(cuisine, count=3):
     """Query OpenSearch for random restaurant IDs matching a cuisine"""
@@ -96,12 +73,12 @@ def format_email_body(restaurants, cuisine):
     body = f"Hello!\n\nHere are some recommended {cuisine} restaurants for you:\n\n"
     for i, r in enumerate(restaurants, start=1):
         body += (
-            f"{i}. {r.get('name', 'Unknown')}\n"
-            f"   Address: {r.get('address', 'N/A')}\n"
-            f"   Rating: {r.get('rating', 'N/A')} ({r.get('num_reviews', '0')} reviews)\n"
-            f"   Zip Code: {r.get('zip_code', 'N/A')}\n\n"
+            f"{i}. {r.get('Name', 'Unknown')}\n"
+            f"  📍 Address: {r.get('Address', 'N/A')}\n"
+            f"  ⭐ Rating: {r.get('Rating', 'N/A')} ({r.get('NumReviews', '0')} reviews)\n"
+            f"  🏙️ Zip Code: {r.get('ZipCode', 'N/A')}\n\n"
         )
-    body += "Enjoy your meal!\n\n- Your Dining Concierge Bot"
+    body += "Enjoy your meal!\n\n- Your Dining Bot"
     return body
 
 
@@ -126,15 +103,23 @@ def send_email(to_email, restaurants, cuisine):
 def lambda_handler(event, context):
     """Main Lambda to process dining suggestions"""
     try:
-        # Step 1: Pull SQS message
-        sqs_message, receipt_handle = receive_sqs_message()
+        #Step 1: Pull SQS message
+        # sqs_message, receipt_handle = receive_sqs_message(event[])
+        message = event["Records"][0]
+        print(f"{message}")
+        receipt_handle = message["receiptHandle"]
+        sqs_message = json.loads(message["body"])
         if not sqs_message:
             print("No messages in the SQS queue.")
             return {"status": "No messages"}
 
+        # sqs_message = {"Cuisine": "Italian", "Email": "bhansalitilak3009@gmail.com"}
+        # receipt_handle = None
+
         cuisine = sqs_message["Cuisine"]
         email = sqs_message["Email"]
 
+        print(f"Processing request for cuisine: {cuisine} and email: {email}")
         # Step 2: Query restaurant IDs from OpenSearch
         restaurant_ids = query_restaurants_from_opensearch(cuisine)
 
@@ -148,20 +133,37 @@ def lambda_handler(event, context):
             item = fetch_restaurant_details(rid)
             if item:
                 restaurants.append(item)
-
+    
         if not restaurants:
             print("No restaurant details found in DynamoDB")
             return {"status": "No details found"}
 
+        # # Step 4: Send email
+        # email_res = send_email(email, restaurants, cuisine)
+        # if email_res:
+        # # Only delete the message if email was sent successfully
+        #     sqs.delete_message(QueueUrl=SQS_QUEUE_URL, ReceiptHandle=receipt_handle)
+        #     print(f"Email sent successfully to {email} and SQS message deleted.")
+        # else:
+        #     # Don't delete message; SQS will retry until maxReceiveCount
+        #     print(f"Failed to send email to {email}. Message will remain in queue for retry.")
         # Step 4: Send email
-        send_email(email, restaurants, cuisine)
+        email_response = send_email(email, restaurants, cuisine)
 
-        # Step 5: Delete processed message from SQS
-        sqs.delete_message(QueueUrl=SQS_QUEUE_URL, ReceiptHandle=receipt_handle)
-        print(f"Email sent successfully to {email} and SQS message deleted.")
+        if not email_response:
+            # Raise an exception to prevent Lambda from deleting the message
+            raise Exception(f"Failed to send email to {email}")
+        else:
+            print(f"Email sent successfully to {email}.")
+
+        # send_email(email, restaurants, cuisine)
+
+        # # Step 5: Delete processed message from SQS
+        # sqs.delete_message(QueueUrl=SQS_QUEUE_URL, ReceiptHandle=receipt_handle)
+        # print(f"Email sent successfully to {email} and SQS message deleted.")
 
         return {"status": "Success"}
 
     except Exception as e:
         print("Error in Lambda function:", e)
-        return {"status": "Error", "message": str(e)}
+        raise
