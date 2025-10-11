@@ -148,5 +148,33 @@ The chatbot is built entirely on AWS with the following services:
 📺 **YouTube Demo:** [YouTube Demo Link](https://youtu.be/DkdtiURvQ0o) 
 
 ---
+
+## 🏗️ Architecture Diagram
+
+The diagram below illustrates the AWS serverless architecture of the Dining Concierge Chatbot.
+
+![Dining Concierge Architecture](Screenshots/architecture-diagram.png)
+
+---
+
 ⭐ **Project by:** *Tilak Bhansali (tb3525)*  
 📍 *NYU Tandon School of Engineering – Cloud Computing (Fall 2025)*
+
+---
+
+### Data Flow (Mermaid)
+
+```mermaid
+graph LR
+  User -->|1. Send message| API[API Gateway]
+  API -->|2. Invoke| LF0[LF0 Lambda - Chatbot API]
+  LF0 -->|3. Forward| Lex[Amazon Lex]
+  Lex -->|4. Invoke| LF1[LF1 Lambda - Lex Hook]
+  LF1 -->|5. Push| SQS[SQS Queue]
+  SQS -->|6. Trigger| LF2[LF2 Lambda - Recommendation Service]
+  LF2 -->|7. Query| DB[DynamoDB]
+  LF2 -->|7b. Search| OS[OpenSearch]
+  LF2 -->|8. Send Email| SES[Amazon SES]
+  SES -->|9. Deliver| Inbox[User Inbox]
+
+
